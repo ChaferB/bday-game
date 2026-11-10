@@ -1,0 +1,2219 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Kate Birthday Run 🎉🌯</title>
+    <!-- Підключення Telegram Mini App / WebApp SDK для інтеграції в Telegram-бот -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #0f172a;
+            font-family: 'Rubik', sans-serif;
+            touch-action: none;
+        }
+        #game-wrapper {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
+        }
+        canvas {
+            display: block;
+            max-width: 100%;
+            max-height: 100%;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+            background-color: #7dd3fc;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+        .btn-game {
+            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 6px 0 #b45309, 0 10px 20px rgba(0,0,0,0.4);
+        }
+        .btn-game:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 #b45309, 0 4px 10px rgba(0,0,0,0.4);
+        }
+        .btn-pink {
+            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 6px 0 #9d174d, 0 10px 20px rgba(0,0,0,0.4);
+        }
+        .btn-pink:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 #9d174d, 0 4px 10px rgba(0,0,0,0.4);
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-wrapper">
+    <!-- Верхній HUD -->
+    <div class="absolute top-2.5 left-3 right-3 z-20 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
+        <!-- Лічильники -->
+        <div class="flex items-center gap-2 sm:gap-3 bg-slate-900/90 backdrop-blur-md border border-slate-700/80 px-3.5 py-2 rounded-2xl shadow-lg pointer-events-auto">
+            <div class="flex items-center gap-1.5" title="Зібрано шавух">
+                <span class="text-2xl sm:text-3xl filter drop-shadow">🌯</span>
+                <div>
+                    <div class="text-[10px] uppercase tracking-wider text-amber-400 font-bold leading-none">Шавухи</div>
+                    <div id="score-display" class="text-xl sm:text-2xl font-black text-white leading-tight">0</div>
+                </div>
+            </div>
+
+            <div class="h-7 w-px bg-slate-700 mx-0.5"></div>
+
+            <!-- Життя -->
+            <div id="lives-display" class="flex items-center gap-1 text-lg sm:text-xl" title="Життя">
+                <span>❤️</span><span>❤️</span><span>❤️</span>
+            </div>
+        </div>
+
+        <!-- Шкала прогресу до Гігантської Шавухи (60 сек) -->
+        <div class="flex-1 max-w-md mx-2 bg-slate-900/90 backdrop-blur-md border border-slate-700/80 px-3.5 py-2 rounded-2xl shadow-lg pointer-events-auto hidden sm:flex flex-col gap-1">
+            <div class="flex justify-between items-center text-[11px] font-bold">
+                <span class="text-pink-400 flex items-center gap-1">🎂 Kate Birthday Run</span>
+                <span id="timer-display" class="text-amber-300">До Мега-Шавухи: 60с</span>
+            </div>
+            <div class="relative w-full h-3 bg-slate-800 rounded-full overflow-hidden border border-slate-700">
+                <div id="progress-bar" class="h-full bg-gradient-to-r from-pink-500 via-amber-400 to-emerald-400 rounded-full transition-all duration-150" style="width: 0%"></div>
+            </div>
+        </div>
+
+        <!-- Кнопки керування та асетів -->
+        <div class="flex items-center gap-1.5 sm:gap-2 pointer-events-auto">
+            <button id="btn-hitbox" class="bg-slate-900/90 hover:bg-slate-800 text-slate-300 border border-slate-700 px-2.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1 shadow-lg transition active:scale-95" title="Показати хітбокси">
+                <span>🎯</span>
+            </button>
+            <button id="btn-sound" class="bg-slate-900/90 hover:bg-slate-800 text-slate-200 border border-slate-700 px-2.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1 shadow-lg transition active:scale-95" title="Звук">
+                <span id="sound-icon">🔊</span>
+            </button>
+            <button id="btn-assets" class="bg-amber-500 hover:bg-amber-400 text-slate-950 px-3 py-2 rounded-xl text-xs sm:text-sm font-black flex items-center gap-1.5 shadow-lg transition active:scale-95 animate-pulse">
+                <span>📂</span> <span class="hidden xs:inline">Свої картинки</span>
+                <span id="asset-badge" class="bg-slate-900 text-amber-400 px-1.5 py-0.5 rounded-md text-[11px]">0/8</span>
+            </button>
+            <button id="btn-exit-top" class="bg-rose-600/90 hover:bg-rose-500 text-white border border-rose-400/40 px-2.5 sm:px-3 py-2 rounded-xl text-xs sm:text-sm font-black flex items-center gap-1 shadow-lg transition active:scale-95" title="Вийти в Telegram-бот">
+                <span>✖</span> <span class="hidden sm:inline">Вийти</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Мобільна шкала прогресу (для вузьких екранів iPhone) -->
+    <div class="sm:hidden absolute top-16 left-3 right-3 z-20 pointer-events-none">
+        <div class="bg-slate-900/85 backdrop-blur-md border border-slate-700/80 px-3 py-1.5 rounded-xl shadow flex items-center gap-2">
+            <span class="text-xs">🏃‍♀️</span>
+            <div class="flex-1 h-2.5 bg-slate-800 rounded-full overflow-hidden">
+                <div id="progress-bar-mobile" class="h-full bg-gradient-to-r from-pink-500 via-amber-400 to-emerald-400 rounded-full" style="width: 0%"></div>
+            </div>
+            <span id="timer-display-mobile" class="text-[11px] font-bold text-amber-300">60с 🌯</span>
+        </div>
+    </div>
+
+    <!-- Ігрове полотно -->
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- Стартовий екран / Екран перемоги / Екран програшу -->
+    <div id="overlay-screen" class="absolute inset-0 z-30 flex items-center justify-center bg-slate-950/65 backdrop-blur-sm p-4">
+        <div class="bg-slate-900/95 border-2 border-pink-500/50 rounded-3xl max-w-md w-full p-6 text-center shadow-2xl transform transition-all">
+            <div id="overlay-badge" class="inline-block bg-pink-500/20 border border-pink-500/40 text-pink-300 text-xs font-bold uppercase tracking-widest px-3.5 py-1 rounded-full mb-2">
+                🎉 Святковий Забіг • 60 секунд 🎉
+            </div>
+            <h1 id="overlay-title" class="text-3xl sm:text-4xl font-black text-white tracking-tight mb-2">
+                KATE BIRTHDAY RUN 🌯
+            </h1>
+            <p id="overlay-subtitle" class="text-slate-300 text-sm sm:text-base mb-5 leading-relaxed">
+                Біжи знайомим двором повз кіоски, збирай смачні шавухи, перестрибуй сердите <span class="text-emerald-400 font-bold">броколі</span> та <span class="text-sky-400 font-bold">пакет АТБ</span> і дістанься до <span class="text-amber-400 font-bold">Гігантської Святкової Шавухи</span> у фіналі!
+            </p>
+
+            <!-- Статистика після гри -->
+            <div id="gameover-stats" class="hidden grid-cols-2 gap-3 mb-5 bg-slate-800/80 p-3.5 rounded-2xl border border-slate-700">
+                <div>
+                    <div class="text-xs text-slate-400 uppercase font-bold">Зібрано шавух</div>
+                    <div id="final-score" class="text-3xl font-black text-amber-400">0</div>
+                </div>
+                <div class="border-l border-slate-700">
+                    <div class="text-xs text-slate-400 uppercase font-bold">Дистанція</div>
+                    <div id="final-progress" class="text-3xl font-black text-pink-400">100%</div>
+                </div>
+            </div>
+
+            <!-- Інструкція керування -->
+            <div id="controls-hint" class="grid grid-cols-2 gap-2.5 text-left bg-slate-800/50 border border-slate-700/70 rounded-2xl p-3 mb-5 text-xs text-slate-300">
+                <div class="flex items-center gap-2.5">
+                    <span class="text-2xl">📱</span>
+                    <div>
+                        <div class="font-bold text-white">iPhone / Смартфон</div>
+                        <div class="text-slate-400">Тап по екрану — стрибок (2 тапи — подвійний!)</div>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2.5">
+                    <span class="text-2xl">💻</span>
+                    <div>
+                        <div class="font-bold text-white">Комп'ютер</div>
+                        <div class="text-slate-400">Пробіл, Стрілка вгору, W або клік мишкою</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex flex-col gap-2.5">
+                <button id="btn-start" class="btn-game w-full bg-gradient-to-b from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-black text-lg py-3.5 px-6 rounded-2xl uppercase tracking-wider">
+                    🚀 Почати забіг!
+                </button>
+                <button id="btn-continue" class="hidden btn-pink w-full bg-gradient-to-b from-pink-500 to-pink-600 hover:from-pink-400 hover:to-pink-500 text-white font-black text-base py-3 px-6 rounded-2xl uppercase tracking-wider">
+                    💖 Продовжити з цього ж місця!
+                </button>
+                <button id="btn-open-assets-start" class="w-full bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 font-bold text-xs py-2.5 px-4 rounded-xl transition">
+                    📂 Завантажити свої 8 картинок (jump.png, run_sheet.png...)
+                </button>
+                <button id="btn-exit-overlay" class="w-full bg-rose-950/70 hover:bg-rose-900/90 text-rose-200 border border-rose-700/60 font-bold text-xs py-2.5 px-4 rounded-xl transition flex items-center justify-center gap-1.5">
+                    <span>✖</span> <span id="exit-overlay-label">Вийти з гри (повернутися в бот)</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Вікно підтвердження виходу (якщо гра відкрита у звичайному браузері поза Telegram WebApp) -->
+    <div id="exit-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-4">
+        <div class="bg-slate-900 border-2 border-rose-500/50 rounded-3xl max-w-sm w-full p-6 text-center shadow-2xl">
+            <div class="text-4xl mb-2">🌯👋</div>
+            <h3 class="text-2xl font-black text-white mb-2">Дякуємо за гру!</h3>
+            <p class="text-slate-300 text-sm mb-5 leading-relaxed">
+                Результат збережено. Тепер можна закрити це вікно або повернутися назад у Telegram-бот 💬
+            </p>
+            <div class="flex flex-col gap-2.5">
+                <button id="btn-resume-from-exit" class="btn-game w-full bg-amber-400 hover:bg-amber-300 text-slate-950 font-black py-3 px-5 rounded-2xl text-sm uppercase">
+                    ↩ Повернутися в гру
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Мобільна підказка знизу -->
+    <div class="absolute bottom-2 left-0 right-0 text-center pointer-events-none z-10">
+        <span class="bg-slate-900/75 text-slate-300 text-[11px] px-3 py-1 rounded-full backdrop-blur-sm border border-slate-800">
+            Тапай по екрану або натискай Пробіл для стрибка (доступний подвійний стрибок ✨)
+        </span>
+    </div>
+
+    <!-- Модальне вікно Менеджера картинок -->
+    <div id="assets-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md p-3 sm:p-6">
+        <div class="bg-slate-900 border border-slate-700 rounded-3xl max-w-2xl w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
+            <!-- Шапка модалки -->
+            <div class="flex items-center justify-between px-5 py-3.5 border-b border-slate-800 bg-slate-900/50">
+                <div>
+                    <h2 class="text-lg sm:text-xl font-black text-white flex items-center gap-2">
+                        <span>🎨</span> Твої спрайти для Kate Birthday Run
+                    </h2>
+                    <p class="text-xs text-slate-400 mt-0.5">
+                        Автоматично прибирає білий фон, обрізає порожні поля та підтримує і <code class="text-amber-400">jump.png</code>, і <code class="text-amber-400">hero_jump.png</code>!
+                    </p>
+                </div>
+                <button id="btn-close-assets" class="bg-slate-800 hover:bg-slate-700 text-slate-300 w-9 h-9 rounded-xl font-bold flex items-center justify-center transition">
+                    ✕
+                </button>
+            </div>
+
+            <!-- Тіло модалки -->
+            <div class="p-4 sm:p-5 overflow-y-auto space-y-4">
+                <!-- Швидке завантаження всіх файлів одразу -->
+                <label class="block border-2 border-dashed border-amber-500/60 hover:border-amber-400 bg-amber-500/10 hover:bg-amber-500/15 transition rounded-2xl p-4 text-center cursor-pointer">
+                    <input type="file" id="bulk-file-input" multiple accept="image/*" class="hidden">
+                    <div class="text-2xl mb-1">📥</div>
+                    <div class="text-sm font-black text-amber-300">Вибрати всі 8 картинок одразу</div>
+                    <div class="text-xs text-slate-300 mt-0.5">
+                        Виділи свої файли (<code class="text-amber-200">background.jpg</code>, <code class="text-amber-200">jump.png</code>, <code class="text-amber-200">run_sheet.png</code>, <code class="text-amber-200">platform.png</code> та ін.) — гра сама обріже білі поля і вирівняє кадри!
+                    </div>
+                </label>
+
+                <!-- Кнопка експорту єдиного самодостатнього HTML файлу -->
+                <div class="bg-emerald-950/60 border border-emerald-500/40 rounded-2xl p-3.5 flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <div class="text-xs text-emerald-200">
+                        <div class="font-black text-sm text-emerald-300">💡 Хочеш скинути гру друзям або відкрити на iPhone одним файлом?</div>
+                        <div>Завантаж сюди свої 8 картинок і натисни кнопку праворуч — отримаєш єдиний <code class="text-white">index.html</code>, куди всі картинки вже вшиті!</div>
+                    </div>
+                    <button id="btn-export-html" class="shrink-0 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs px-4 py-2.5 rounded-xl shadow-lg transition active:scale-95">
+                        💾 Скачати готовий index.html
+                    </button>
+                </div>
+
+                <!-- Список усіх 8 файлів -->
+                <div id="asset-list" class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <!-- Генерується динамічно через JS -->
+                </div>
+
+                <!-- Налаштування швидкості та розмірів -->
+                <div class="bg-slate-800/60 border border-slate-700/80 rounded-2xl p-3.5 space-y-3">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <div class="text-xs font-bold uppercase tracking-wider text-amber-400">⚙️ Тонке налаштування гри</div>
+                        <label class="flex items-center gap-2 text-xs text-slate-200 cursor-pointer">
+                            <input type="checkbox" id="chk-autocrop" checked class="accent-amber-500 rounded">
+                            <span>✨ Авто-видалення білого фону та полів</span>
+                        </label>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                        <div>
+                            <label class="flex justify-between text-slate-300 mb-1">
+                                <span>Розмір Кейт (загальний):</span>
+                                <span id="lbl-hero-scale" class="font-bold text-white">100%</span>
+                            </label>
+                            <input type="range" id="rng-hero-scale" min="70" max="180" value="100" class="w-full accent-amber-500">
+                        </div>
+                        <div>
+                            <label class="flex justify-between text-slate-300 mb-1">
+                                <span>Висота при бігу (run):</span>
+                                <span id="lbl-run-scale" class="font-bold text-amber-300">180%</span>
+                            </label>
+                            <!-- Збільшено діапазон до 250%, щоб Кейт під час бігу можна було зробити значно більшою -->
+                            <input type="range" id="rng-run-scale" min="80" max="250" value="180" class="w-full accent-amber-500">
+                        </div>
+                        <div>
+                            <label class="flex justify-between text-slate-300 mb-1">
+                                <span>Режим фону:</span>
+                                <span id="lbl-bg-mode" class="font-bold text-emerald-400">Панорама (0 швів)</span>
+                            </label>
+                            <select id="sel-bg-mode" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-white font-bold">
+                                <option value="panorama" selected>Панорама на 60с (Без склейки!)</option>
+                                <option value="loop_tree">Кільце + Дерево на стику</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="flex justify-between text-slate-300 mb-1">
+                                <span>Тривалість рівня:</span>
+                                <span id="lbl-level-time" class="font-bold text-white">60 сек</span>
+                            </label>
+                            <input type="range" id="rng-level-time" min="30" max="120" step="10" value="60" class="w-full accent-amber-500">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Футер модалки -->
+            <div class="px-5 py-3 border-t border-slate-800 bg-slate-900/90 flex flex-wrap items-center justify-between gap-2">
+                <span class="text-xs text-slate-400">
+                    Підтримуються: <code class="text-slate-300">jump.png</code> або <code class="text-slate-300">hero_jump.png</code>
+                </span>
+                <button id="btn-done-assets" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs sm:text-sm px-6 py-2.5 rounded-xl transition">
+                    Готово, грати! 🚀
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script id="embedded-assets-script">
+// Якщо ти натиснеш "Скачати готовий index.html", твої картинки запишуться сюди автоматично:
+window.EMBEDDED_ASSETS = {};
+</script>
+
+<script>
+/**
+ * KATE BIRTHDAY RUN — Святковий 2D Платформер для ПК та iPhone
+ * Зі збереженням пропорцій 1:1 при бігу, панорамним фоном без склейок та інтеграцією в Telegram WebApp!
+ */
+
+// --- 0. ІНІЦІАЛІЗАЦІЯ TELEGRAM WEBAPP (якщо запущено в Telegram-боті) ---
+const tgWebApp = (window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : null;
+if (tgWebApp) {
+    try {
+        tgWebApp.ready();
+        tgWebApp.expand();
+    } catch (e) {}
+}
+
+function exitGameToTelegram() {
+    const isWin = gameState === 'VICTORY';
+    const payload = JSON.stringify({
+        event: 'kate_birthday_run_exit',
+        status: isWin ? 'win' : 'exit',
+        score: score,
+        progressPct: Math.min(100, Math.round((levelTimer / config.levelDuration) * 100))
+    });
+
+    if (tgWebApp) {
+        try {
+            // Якщо гра відкрита як Telegram WebApp — закриваємо її і повертаємо користувача в чат з ботом
+            tgWebApp.close();
+            return;
+        } catch (e) {}
+    }
+
+    // Якщо відкрито у звичайній вкладці або iframe
+    try {
+        window.parent.postMessage(payload, '*');
+    } catch (e) {}
+
+    try {
+        window.close();
+    } catch (e) {}
+
+    // Якщо браузер не дозволяє закрити вкладку скриптом — показуємо охайне вікно виходу
+    if (gameState === 'PLAYING' || gameState === 'FINALE') {
+        gameState = 'START';
+    }
+    document.getElementById('exit-modal').classList.remove('hidden');
+}
+
+// --- 1. КОНФІГУРАЦІЯ АСЕТІВ (Підтримує і jump.png, і hero_jump.png!) ---
+const ASSET_MANIFEST = [
+    { key: 'background',     files: ['background.jpg', 'background.png'], label: 'Місто з кіосками (Фон)', mode: 'bg' },
+    { key: 'platform',       files: ['platform.png', 'platform.jpg'],     label: 'Дорога / Бордюр',       mode: 'platform' },
+    { key: 'hero_idle',      files: ['hero_idle.png', 'idle.png'],        label: 'Кейт стоїть (Idle)',    mode: 'single' },
+    { key: 'hero_jump',      files: ['jump.png', 'hero_jump.png'],        label: 'Кейт у стрибку (Jump)', mode: 'single' },
+    { key: 'run_sheet',      files: ['run_sheet.png', 'run.png'],         label: 'Біг (смужка 4 кадри)',  mode: 'run_sheet' },
+    { key: 'item',           files: ['item.png', 'shawarma.png'],         label: 'Шаурма (бонус + фінал)',mode: 'single' },
+    { key: 'enemy_bag',      files: ['enemy_bag.png', 'bag.png'],         label: 'Пакет АТБ (ворог)',     mode: 'single' },
+    { key: 'enemy_broccoli', files: ['enemy_broccoli.png', 'broccoli.png'], label: 'Броколі (ворог)',     mode: 'single' }
+];
+
+const assets = {};
+let loadedCustomCount = 0;
+
+// --- 2. РОЗУМНИЙ ОБРОБНИК СПРАЙТІВ (Видалення білого фону + Авто-обрізка полів + Безшовний фон) ---
+
+function isNearWhite(r, g, b, a) {
+    return a > 20 && r >= 238 && g >= 238 && b >= 238;
+}
+
+// Flood-fill з країв картинки: видаляє тільки зовнішній білий фон,
+// гарантовано зберігаючи білу кофтинку Кейт, білі кросівки та білий пакет АТБ всередині контуру!
+function removeOuterWhiteBackground(imageData) {
+    const w = imageData.width;
+    const h = imageData.height;
+    const data = imageData.data;
+
+    // Перевіряємо кутові пікселі — якщо вони вже прозорі, нічого заливати не треба
+    const corners = [0, (w - 1) * 4, (h - 1) * w * 4, ((h - 1) * w + (w - 1)) * 4];
+    let hasWhiteCorner = false;
+    for (const idx of corners) {
+        if (isNearWhite(data[idx], data[idx + 1], data[idx + 2], data[idx + 3])) {
+            hasWhiteCorner = true;
+            break;
+        }
+    }
+    if (!hasWhiteCorner) return;
+
+    const visited = new Uint8Array(w * h);
+    const queue = new Int32Array(w * h);
+    let head = 0, tail = 0;
+
+    function tryPush(x, y) {
+        if (x < 0 || x >= w || y < 0 || y >= h) return;
+        const p = y * w + x;
+        if (visited[p]) return;
+        const idx = p * 4;
+        if (data[idx + 3] === 0 || isNearWhite(data[idx], data[idx + 1], data[idx + 2], data[idx + 3])) {
+            visited[p] = 1;
+            queue[tail++] = p;
+        }
+    }
+
+    for (let x = 0; x < w; x++) { tryPush(x, 0); tryPush(x, h - 1); }
+    for (let y = 0; y < h; y++) { tryPush(0, y); tryPush(w - 1, y); }
+
+    while (head < tail) {
+        const p = queue[head++];
+        const idx = p * 4;
+        data[idx + 3] = 0; // робимо зовнішній білий піксель прозорим
+
+        const x = p % w;
+        const y = (p / w) | 0;
+        tryPush(x + 1, y);
+        tryPush(x - 1, y);
+        tryPush(x, y + 1);
+        tryPush(x, y - 1);
+    }
+
+    // Прибираємо тонкий напівбілий ореол на межі з прозорістю
+    for (let y = 1; y < h - 1; y++) {
+        for (let x = 1; x < w - 1; x++) {
+            const p = y * w + x;
+            const idx = p * 4;
+            if (data[idx + 3] > 0 && data[idx] > 235 && data[idx + 1] > 235 && data[idx + 2] > 235) {
+                if (visited[p - 1] || visited[p + 1] || visited[p - w] || visited[p + w]) {
+                    data[idx + 3] = 0;
+                }
+            }
+        }
+    }
+}
+
+function getBoundingBox(imageData, xStart = 0, xEnd = imageData.width - 1) {
+    const w = imageData.width;
+    const h = imageData.height;
+    const data = imageData.data;
+    let minX = xEnd + 1, minY = h, maxX = xStart - 1, maxY = -1;
+
+    for (let y = 0; y < h; y++) {
+        for (let x = xStart; x <= xEnd; x++) {
+            const alpha = data[(y * w + x) * 4 + 3];
+            if (alpha > 25) {
+                if (x < minX) minX = x;
+                if (x > maxX) maxX = x;
+                if (y < minY) minY = y;
+                if (y > maxY) maxY = y;
+            }
+        }
+    }
+    if (maxX < minX || maxY < minY) {
+        return { minX: xStart, minY: 0, maxX: xEnd, maxY: h - 1, empty: true };
+    }
+    return { minX, minY, maxX, maxY, empty: false };
+}
+
+function createSeamlessBackgroundCanvas(img) {
+    const w = img.naturalWidth || img.width;
+    const h = img.naturalHeight || img.height;
+    const blendW = Math.max(60, Math.round(w * 0.16));
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const c = canvas.getContext('2d');
+
+    c.drawImage(img, 0, 0, w, h);
+
+    // Плавний кросфейд лівого краю на правий край для кільцевого режиму
+    const temp = document.createElement('canvas');
+    temp.width = blendW;
+    temp.height = h;
+    const tc = temp.getContext('2d');
+    tc.drawImage(img, 0, 0, blendW, h, 0, 0, blendW, h);
+
+    const imgData = tc.getImageData(0, 0, blendW, h);
+    const d = imgData.data;
+    for (let x = 0; x < blendW; x++) {
+        const t = x / blendW;
+        const smoothAlpha = t * t * (3 - 2 * t);
+        for (let y = 0; y < h; y++) {
+            const idx = (y * blendW + x) * 4 + 3;
+            d[idx] = Math.round(d[idx] * smoothAlpha);
+        }
+    }
+    tc.putImageData(imgData, 0, 0);
+    c.drawImage(temp, w - blendW, 0);
+
+    return canvas;
+}
+
+// Знаходить 4 окремі фігурки Кейт у run_sheet.png, шукаючи мінімуми щільності пікселів між ними,
+// і зберігає кожен кадр у його РЕАЛЬНИХ пропорціях (щоб широкі ноги при бігу ніколи не сплющували висоту Кейт!)
+function sliceRunSheetCorrectly(workCanvas, imgData) {
+    const w = imgData.width;
+    const h = imgData.height;
+    const data = imgData.data;
+
+    // Рахуємо кількість непрозорих пікселів у кожній вертикальній колонці X
+    const colDensity = new Int32Array(w);
+    for (let x = 0; x < w; x++) {
+        let count = 0;
+        for (let y = 0; y < h; y++) {
+            if (data[(y * w + x) * 4 + 3] > 35) count++;
+        }
+        colDensity[x] = count;
+    }
+
+    // Загальні межі всіх 4 фігурок разом
+    let firstX = 0, lastX = w - 1;
+    while (firstX < w && colDensity[firstX] === 0) firstX++;
+    while (lastX > firstX && colDensity[lastX] === 0) lastX--;
+    const spanW = Math.max(40, lastX - firstX + 1);
+
+    // Шукаємо 3 точки розрізу (долини з мінімумом пікселів) поблизу 25%, 50% та 75% ширини смужки
+    const splitPoints = [firstX];
+    for (let cut = 1; cut <= 3; cut++) {
+        const center = Math.round(firstX + (spanW * cut) / 4);
+        const searchRadius = Math.max(8, Math.round(spanW * 0.10));
+        let bestX = center;
+        let minVal = Infinity;
+
+        for (let x = Math.max(firstX + 4, center - searchRadius); x <= Math.min(lastX - 4, center + searchRadius); x++) {
+            // Додаємо легкий пріоритет точкам ближче до центру розрізу, якщо там 0 пікселів
+            const score = colDensity[x] * 100 + Math.abs(x - center);
+            if (score < minVal) {
+                minVal = score;
+                bestX = x;
+            }
+        }
+        splitPoints.push(bestX);
+    }
+    splitPoints.push(lastX + 1);
+
+    // Спочатку знаходимо спільні верхню (minY) і нижню (maxY) межі по всій смужці,
+    // щоб масштаб голови і стоп був стабільним, але ширину кожного кадру беремо ЙОГО ВЛАСНУ!
+    const boxes = [];
+    for (let i = 0; i < 4; i++) {
+        const x0 = splitPoints[i];
+        const x1 = Math.max(x0, splitPoints[i + 1] - 1);
+        boxes.push(getBoundingBox(imgData, x0, x1));
+    }
+
+    const frames = boxes.map(b => {
+        const bw = Math.max(12, b.maxX - b.minX + 1);
+        const bh = Math.max(12, b.maxY - b.minY + 1);
+        const fCanvas = document.createElement('canvas');
+        fCanvas.width = bw;
+        fCanvas.height = bh;
+        const fCtx = fCanvas.getContext('2d');
+        fCtx.drawImage(workCanvas, b.minX, b.minY, bw, bh, 0, 0, bw, bh);
+        return fCanvas;
+    });
+
+    return frames;
+}
+
+function processLoadedAsset(key, rawImg) {
+    const item = assets[key];
+    if (!item) return;
+
+    const w = rawImg.naturalWidth || rawImg.width;
+    const h = rawImg.naturalHeight || rawImg.height;
+    if (!w || !h) return;
+
+    if (item.mode === 'bg') {
+        item.processedCanvas = createSeamlessBackgroundCanvas(rawImg);
+        return;
+    }
+
+    if (!config.autoCrop) {
+        item.processedCanvas = rawImg;
+        item.runFrames = null;
+        return;
+    }
+
+    const workCanvas = document.createElement('canvas');
+    workCanvas.width = w;
+    workCanvas.height = h;
+    const wCtx = workCanvas.getContext('2d');
+    wCtx.drawImage(rawImg, 0, 0);
+
+    let imgData;
+    try {
+        imgData = wCtx.getImageData(0, 0, w, h);
+        removeOuterWhiteBackground(imgData);
+        wCtx.putImageData(imgData, 0, 0);
+    } catch (e) {
+        item.processedCanvas = rawImg;
+        return;
+    }
+
+    if (item.mode === 'platform') {
+        const box = getBoundingBox(imgData);
+        const insetX = Math.min(8, Math.floor((box.maxX - box.minX) * 0.03));
+        const sx = box.minX + insetX;
+        const sy = box.minY;
+        const sw = Math.max(16, (box.maxX - box.minX + 1) - insetX * 2);
+        const sh = Math.max(16, box.maxY - box.minY + 1);
+
+        const out = document.createElement('canvas');
+        out.width = sw;
+        out.height = sh;
+        out.getContext('2d').drawImage(workCanvas, sx, sy, sw, sh, 0, 0, sw, sh);
+        item.processedCanvas = out;
+        return;
+    }
+
+    if (item.mode === 'run_sheet') {
+        item.runFrames = sliceRunSheetCorrectly(workCanvas, imgData);
+        item.processedCanvas = item.runFrames[0];
+        return;
+    }
+
+    // Звичайний одиночний спрайт (hero_idle, jump, item, enemy_bag, enemy_broccoli)
+    const box = getBoundingBox(imgData);
+    const sw = Math.max(8, box.maxX - box.minX + 1);
+    const sh = Math.max(8, box.maxY - box.minY + 1);
+    const out = document.createElement('canvas');
+    out.width = sw;
+    out.height = sh;
+    out.getContext('2d').drawImage(workCanvas, box.minX, box.minY, sw, sh, 0, 0, sw, sh);
+    item.processedCanvas = out;
+}
+
+// Ініціалізація та авто-пошук файлів (пробує і jump.png, і hero_jump.png!)
+function initAssets() {
+    ASSET_MANIFEST.forEach(item => {
+        assets[item.key] = {
+            img: new Image(),
+            processedCanvas: null,
+            runFrames: null,
+            dataUrl: null,
+            loaded: false,
+            files: item.files,
+            label: item.label,
+            mode: item.mode
+        };
+
+        // 1. Спочатку перевіряємо, чи вшиті картинки прямо в HTML
+        if (window.EMBEDDED_ASSETS && window.EMBEDDED_ASSETS[item.key]) {
+            loadFromSource(item.key, window.EMBEDDED_ASSETS[item.key], true);
+            return;
+        }
+
+        // 2. Пробуємо завантажити локальні файли по черзі (наприклад, спочатку jump.png, потім hero_jump.png)
+        tryLoadCandidateFile(item.key, 0);
+    });
+}
+
+function tryLoadCandidateFile(key, candidateIdx) {
+    const item = assets[key];
+    if (!item || candidateIdx >= item.files.length) {
+        updateAssetUI();
+        return;
+    }
+    const img = new Image();
+    img.onload = () => {
+        item.img = img;
+        item.loaded = true;
+        processLoadedAsset(key, img);
+        updateAssetUI();
+    };
+    img.onerror = () => {
+        tryLoadCandidateFile(key, candidateIdx + 1);
+    };
+    img.src = item.files[candidateIdx];
+}
+
+function loadFromSource(key, srcDataUrl, isDataUrl = false) {
+    const item = assets[key];
+    const img = new Image();
+    img.onload = () => {
+        item.img = img;
+        item.loaded = true;
+        if (isDataUrl) item.dataUrl = srcDataUrl;
+        processLoadedAsset(key, img);
+        updateAssetUI();
+    };
+    img.src = srcDataUrl;
+}
+
+// --- 3. ЗВУКОВИЙ СИНТЕЗАТОР (Web Audio API + Святкова мелодія у фіналі) ---
+class SoundFX {
+    constructor() {
+        this.ctx = null;
+        this.enabled = true;
+    }
+    init() {
+        if (!this.ctx) {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (AudioCtx) this.ctx = new AudioCtx();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+            this.ctx.resume();
+        }
+    }
+    playJump(isDouble = false) {
+        if (!this.enabled || !this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        const now = this.ctx.currentTime;
+        osc.frequency.setValueAtTime(isDouble ? 340 : 250, now);
+        osc.frequency.exponentialRampToValueAtTime(isDouble ? 680 : 520, now + 0.15);
+        gain.gain.setValueAtTime(0.16, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.17);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.17);
+    }
+    playCollect() {
+        if (!this.enabled || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        [587.33, 880, 1174.66].forEach((freq, idx) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(freq, now + idx * 0.055);
+            gain.gain.setValueAtTime(0.15, now + idx * 0.055);
+            gain.gain.exponentialRampToValueAtTime(0.008, now + idx * 0.055 + 0.15);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now + idx * 0.055);
+            osc.stop(now + idx * 0.055 + 0.15);
+        });
+    }
+    playHit() {
+        if (!this.enabled || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(160, now);
+        osc.frequency.linearRampToValueAtTime(55, now + 0.28);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.28);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.28);
+    }
+    playBirthdayFanfare() {
+        if (!this.enabled || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        // Мелодія Happy Birthday!
+        const notes = [
+            [261.6, 0.0, 0.22], [261.6, 0.25, 0.22], [293.7, 0.5, 0.45],
+            [261.6, 1.0, 0.45], [349.2, 1.5, 0.45], [329.6, 2.0, 0.85]
+        ];
+        notes.forEach(([freq, delay, dur]) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(freq, now + delay);
+            gain.gain.setValueAtTime(0.22, now + delay);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + delay + dur);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now + delay);
+            osc.stop(now + delay + dur);
+        });
+    }
+}
+
+const sfx = new SoundFX();
+
+// --- 4. НАЛАШТУВАННЯ ПОЛОТНА ТА СТАНУ ГРИ ---
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+const GAME_HEIGHT = 600;
+let GAME_WIDTH = 1000;
+const BASE_GROUND_HEIGHT = 92;
+
+const config = {
+    heroScale: 1.0,
+    runScaleMultiplier: 1.8, // Піднято базовий множник бігу
+    runFps: 9,
+    bgMode: 'panorama',  // 'panorama' = 1 плавний прохід на всі 60 сек БЕЗ СКЛЕЙКИ! | 'loop_tree' = кільце з деревом на шві
+    bgSpeedFactor: 0.08,
+    levelDuration: 60,   // 60 секунд до фінальної Гігантської Шавухи
+    autoCrop: true,
+    showHitboxes: false
+};
+
+let gameState = 'START'; // 'START' | 'PLAYING' | 'FINALE' | 'VICTORY' | 'GAMEOVER'
+let score = 0;
+let lives = 3;
+let levelTimer = 0;
+let gameSpeed = 370;
+let bgScrollX = 0;
+let groundScrollX = 0;
+let invulnerableTimer = 0;
+let shakeTime = 0;
+
+let items = [];
+let enemies = [];
+let particles = [];
+let confetti = [];
+let floatingTexts = [];
+let itemSpawnTimer = 0;
+let enemySpawnTimer = 0;
+let giantShawarma = null;
+
+// --- 5. ГЕРОЇНЯ КЕЙТ ---
+const hero = {
+    x: 110,
+    y: 0,
+    width: 96,
+    height: 150,
+    vy: 0,
+    gravity: 2150,
+    jumpForce: -820,
+    isGrounded: true,
+    jumpsLeft: 2,
+    frameIndex: 0,
+    frameTimer: 0,
+    groundY: GAME_HEIGHT - BASE_GROUND_HEIGHT + 16,
+
+    reset() {
+        this.height = Math.round(150 * config.heroScale);
+        // Фіксуємо ідентичну базову ширину для бігу та стрибка, щоб розміри не відрізнялися
+        this.width = Math.round(this.height * 0.72);
+        this.groundY = GAME_HEIGHT - BASE_GROUND_HEIGHT + 16;
+        this.x = Math.max(55, Math.min(145, Math.round(GAME_WIDTH * 0.13)));
+        this.y = this.groundY - this.height;
+        this.vy = 0;
+        this.isGrounded = true;
+        this.jumpsLeft = 2;
+        this.frameIndex = 0;
+        this.frameTimer = 0;
+    },
+
+    jump() {
+        if (this.jumpsLeft > 0) {
+            const isDouble = !this.isGrounded;
+            this.vy = isDouble ? this.jumpForce * 0.88 : this.jumpForce;
+            this.isGrounded = false;
+            this.jumpsLeft--;
+            sfx.playJump(isDouble);
+
+            for (let i = 0; i < 7; i++) {
+                particles.push({
+                    x: this.x + this.width * 0.45,
+                    y: this.y + this.height - 6,
+                    vx: (Math.random() - 0.7) * 160,
+                    vy: (Math.random() - 0.5) * 90,
+                    radius: Math.random() * 5 + 3,
+                    color: isDouble ? '#f472b6' : '#e2e8f0',
+                    alpha: 0.9,
+                    life: 0.35
+                });
+            }
+        }
+    },
+
+    update(dt) {
+        const floorY = this.groundY - this.height;
+
+        if (gameState === 'PLAYING' || gameState === 'FINALE') {
+            this.vy += this.gravity * dt;
+            this.y += this.vy * dt;
+
+            if (this.y >= floorY) {
+                this.y = floorY;
+                this.vy = 0;
+                this.isGrounded = true;
+                this.jumpsLeft = 2;
+            }
+
+            this.frameTimer += dt;
+            if (this.frameTimer >= 1 / config.runFps) {
+                this.frameTimer = 0;
+                this.frameIndex = (this.frameIndex + 1) % 4;
+            }
+        } else {
+            this.y = floorY;
+            this.vy = 0;
+            this.isGrounded = true;
+        }
+    },
+
+    getHitbox() {
+        const padX = this.width * 0.22;
+        const padTop = this.height * 0.08;
+        const padBottom = this.height * 0.04;
+        return {
+            x: this.x + padX,
+            y: this.y + padTop,
+            w: this.width - padX * 2,
+            h: this.height - padTop - padBottom
+        };
+    },
+
+    draw(ctx) {
+        ctx.save();
+        if (invulnerableTimer > 0 && Math.floor(invulnerableTimer * 12) % 2 === 0) {
+            ctx.globalAlpha = 0.45;
+        }
+
+        // Тінь під кросівками
+        const distFromGround = Math.max(0, (this.groundY - this.height) - this.y);
+        const shadowScale = Math.max(0.35, 1 - distFromGround / 350);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.32)';
+        ctx.beginPath();
+        ctx.ellipse(
+            this.x + this.width / 2,
+            this.groundY - 2,
+            (this.width * 0.34) * shadowScale,
+            6 * shadowScale,
+            0, 0, Math.PI * 2
+        );
+        ctx.fill();
+
+        // Фіксована висота та пропорції для всіх станів (біг, стрибок, стоїть)
+        if (gameState === 'START' || gameState === 'VICTORY' || gameState === 'GAMEOVER') {
+            const idleSrc = assets.hero_idle.processedCanvas || (assets.hero_idle.loaded ? assets.hero_idle.img : null);
+            if (idleSrc) {
+                drawSpritePreserveAspect(ctx, idleSrc, this.x, this.y, this.width, this.height);
+            } else {
+                drawFallbackKate(ctx, this.x, this.y, this.width, this.height, 'IDLE', 0);
+            }
+        } else if (!this.isGrounded) {
+            // Стрибок
+            const jumpSrc = assets.hero_jump.processedCanvas
+                || (assets.hero_jump.loaded ? assets.hero_jump.img : null)
+                || (assets.run_sheet.runFrames ? assets.run_sheet.runFrames[1] : null);
+
+            if (jumpSrc) {
+                drawSpritePreserveAspect(ctx, jumpSrc, this.x, this.y, this.width, this.height);
+            } else {
+                drawFallbackKate(ctx, this.x, this.y, this.width, this.height, 'JUMP', 0);
+            }
+        } else {
+            // Біг (4 кадри з run_sheet) — застосовуємо коефіцієнт runScaleMultiplier (тепер до 250%)
+            const runBoxH = Math.round(this.height * config.runScaleMultiplier);
+            const runBoxY = this.groundY - runBoxH;
+            const runBoxW = Math.round(runBoxH * 0.72);
+            const runBoxX = this.x - Math.round((runBoxW - this.width) / 2);
+
+            if (assets.run_sheet.runFrames && assets.run_sheet.runFrames.length === 4) {
+                const frameCanvas = assets.run_sheet.runFrames[this.frameIndex];
+                drawSpritePreserveAspect(ctx, frameCanvas, runBoxX, runBoxY, runBoxW, runBoxH);
+            } else if (assets.run_sheet.loaded) {
+                const img = assets.run_sheet.img;
+                const fw = img.naturalWidth / 4;
+                const fh = img.naturalHeight;
+                const ratio = fw / fh;
+                const drawH = runBoxH;
+                const drawW = drawH * ratio;
+                const drawX = runBoxX + (runBoxW - drawW) / 2;
+                ctx.imageSmoothingEnabled = false;
+                ctx.drawImage(img, this.frameIndex * fw, 0, fw, fh, drawX, runBoxY, drawW, drawH);
+            } else {
+                drawFallbackKate(ctx, this.x, this.y, this.width, this.height, 'RUN', this.frameIndex);
+            }
+        }
+
+        ctx.restore();
+
+        if (config.showHitboxes) {
+            const hb = this.getHitbox();
+            ctx.strokeStyle = '#22c55e';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(hb.x, hb.y, hb.w, hb.h);
+        }
+    }
+};
+
+// Рівномірне масштабування спрайтів по висоті targetH зі збереженням опорної лінії ніг
+function drawSpritePreserveAspect(ctx, source, boxX, boxY, boxW, targetH) {
+    const sw = source.naturalWidth || source.width;
+    const sh = source.naturalHeight || source.height;
+    if (!sw || !sh) return;
+
+    ctx.imageSmoothingEnabled = false;
+    const ratio = sw / sh;
+    const drawH = targetH;
+    // Використовуємо єдиний еталон пропорції відносно висоти, щоб біг і стрибок збігалися піксель-в-піксель
+    const drawW = drawH * Math.max(0.6, Math.min(1.1, ratio));
+    const drawX = Math.round(boxX + (boxW - drawW) / 2);
+    const drawY = Math.round(boxY + targetH - drawH);
+    ctx.drawImage(source, drawX, drawY, Math.round(drawW), Math.round(drawH));
+}
+
+function drawSpriteAlignedBottom(ctx, source, boxX, boxY, boxW, boxH) {
+    drawSpritePreserveAspect(ctx, source, boxX, boxY, boxW, boxH);
+}
+
+// --- 6. ВБУДОВАНІ ПІКСЕЛЬ-СКІНИ У ТОЧНОМУ СТИЛІ ТВОЇХ КАРТИНОК (якщо відкрито без файлів) ---
+
+function drawFallbackKate(ctx, x, y, w, h, state, frameIdx) {
+    // Намальована у точній кольоровій гамі твоєї Кейт: довге каштанове волосся, білий кроп-топ, сіро-бежеві штани карго та білі кросівки!
+    ctx.save();
+    ctx.translate(x + w / 2, y + h / 2);
+    const bounce = state === 'RUN' ? Math.abs(Math.sin(frameIdx * Math.PI / 2)) * 4 : 0;
+    ctx.translate(0, -bounce);
+
+    const legAngles = [[0.42, -0.42], [0.15, -0.15], [-0.42, 0.42], [-0.15, 0.15]];
+    let leftLeg = 0, rightLeg = 0;
+    if (state === 'RUN') [leftLeg, rightLeg] = legAngles[frameIdx % 4];
+    else if (state === 'JUMP') { leftLeg = -0.35; rightLeg = 0.55; }
+
+    // Довге каштанове волосся ззаду
+    ctx.fillStyle = '#451a03';
+    ctx.beginPath();
+    ctx.ellipse(-10, -h * 0.18, 16, 26, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Штани карго (сіро-бежеві) та білі кросівки
+    [leftLeg, rightLeg].forEach((angle, idx) => {
+        ctx.save();
+        ctx.translate(0, h * 0.05);
+        ctx.rotate(angle);
+        ctx.fillStyle = idx === 0 ? '#78716c' : '#a8a29e';
+        ctx.strokeStyle = '#1c1917';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(-9, 0, 18, h * 0.34, 6);
+        ctx.fill();
+        ctx.stroke();
+
+        // Кишеня карго збоку
+        ctx.fillStyle = '#8a817c';
+        ctx.fillRect(-6, h * 0.1, 11, 12);
+        ctx.strokeRect(-6, h * 0.1, 11, 12);
+
+        // Білі кросівки
+        ctx.fillStyle = '#f8fafc';
+        ctx.beginPath();
+        ctx.roundRect(-8, h * 0.31, 22, 11, 4);
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+    });
+
+    // Пояс/живіт
+    ctx.fillStyle = '#fdba74';
+    ctx.fillRect(-8, -h * 0.04, 16, 10);
+
+    // Білий кроп-топ з довгим рукавом
+    ctx.fillStyle = '#f5f5f4';
+    ctx.strokeStyle = '#1c1917';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(-12, -h * 0.22, 24, h * 0.19, 6);
+    ctx.fill();
+    ctx.stroke();
+
+    // Голова
+    ctx.fillStyle = '#fed7aa';
+    ctx.beginPath();
+    ctx.arc(2, -h * 0.33, 15, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Каштанове волосся зверху і пасмо спереду
+    ctx.fillStyle = '#5c240a';
+    ctx.beginPath();
+    ctx.arc(0, -h * 0.35, 16, Math.PI * 0.75, Math.PI * 2.1);
+    ctx.fill();
+    ctx.fillRect(-13, -h * 0.35, 10, 32);
+
+    // Очі
+    ctx.fillStyle = '#1c1917';
+    ctx.beginPath();
+    ctx.arc(9, -h * 0.34, 2.3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Рука в білому рукаві
+    ctx.save();
+    ctx.translate(-2, -h * 0.18);
+    const armAngle = state === 'RUN' ? -leftLeg * 0.8 : (state === 'JUMP' ? 0.5 : 0.1);
+    ctx.rotate(armAngle);
+    ctx.fillStyle = '#f5f5f4';
+    ctx.beginPath();
+    ctx.roundRect(-5, 0, 10, h * 0.2, 4);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.restore();
+}
+
+function drawFallbackBackground(ctx, scrollX) {
+    // Денне блакитне небо та хмарки як на твоєму background.jpg
+    const skyGrad = ctx.createLinearGradient(0, 0, 0, GAME_HEIGHT);
+    skyGrad.addColorStop(0, '#7dd3fc');
+    skyGrad.addColorStop(0.65, '#bae6fd');
+    skyGrad.addColorStop(1, '#e0f2fe');
+    ctx.fillStyle = skyGrad;
+    ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+    // Пухнасті білі хмаринки
+    ctx.fillStyle = '#f8fafc';
+    for (let i = 0; i < 6; i++) {
+        const cx = ((i * 290 - scrollX * 0.3) % (GAME_WIDTH + 200) + (GAME_WIDTH + 200)) % (GAME_WIDTH + 200) - 100;
+        const cy = 65 + (i % 3) * 38;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 28, 0, Math.PI * 2);
+        ctx.arc(cx + 24, cy - 8, 34, 0, Math.PI * 2);
+        ctx.arc(cx + 52, cy, 26, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    const groundTop = GAME_HEIGHT - BASE_GROUND_HEIGHT;
+    const blockW = 760;
+    const offset = ((scrollX % blockW) + blockW) % blockW;
+
+    for (let i = -1; i < Math.ceil(GAME_WIDTH / blockW) + 2; i++) {
+        const bx = i * blockW - offset;
+
+        // 5-поверхова панелька зліва
+        ctx.fillStyle = '#a8a29e';
+        ctx.strokeStyle = '#44403c';
+        ctx.lineWidth = 2;
+        ctx.fillRect(bx + 20, groundTop - 310, 290, 310);
+        ctx.strokeRect(bx + 20, groundTop - 310, 290, 310);
+
+        // Вікна 5-поверхівки
+        for (let row = 0; row < 5; row++) {
+            for (let col = 0; col < 5; col++) {
+                ctx.fillStyle = '#475569';
+                ctx.fillRect(bx + 42 + col * 52, groundTop - 285 + row * 52, 32, 34);
+                ctx.strokeStyle = '#e2e8f0';
+                ctx.strokeRect(bx + 42 + col * 52, groundTop - 285 + row * 52, 32, 34);
+            }
+        }
+
+        // 9-поверхівка справа
+        ctx.fillStyle = '#b8b2a6';
+        ctx.strokeStyle = '#44403c';
+        ctx.fillRect(bx + 390, groundTop - 420, 310, 420);
+        ctx.strokeRect(bx + 390, groundTop - 420, 310, 420);
+        ctx.fillStyle = '#b45309';
+        ctx.fillRect(bx + 390, groundTop - 420, 310, 24);
+
+        for (let row = 0; row < 7; row++) {
+            for (let col = 0; col < 5; col++) {
+                ctx.fillStyle = '#475569';
+                ctx.fillRect(bx + 415 + col * 55, groundTop - 380 + row * 50, 34, 32);
+                ctx.strokeStyle = '#e2e8f0';
+                ctx.strokeRect(bx + 415 + col * 55, groundTop - 380 + row * 50, 34, 32);
+            }
+        }
+
+        // Зелені дерева у дворі
+        ctx.fillStyle = '#4d7c0f';
+        [bx + 15, bx + 335, bx + 380, bx + 715].forEach(tx => {
+            ctx.beginPath();
+            ctx.arc(tx, groundTop - 75, 55, 0, Math.PI * 2);
+            ctx.arc(tx + 30, groundTop - 95, 48, 0, Math.PI * 2);
+            ctx.fill();
+        });
+
+        // Кіоски "КІОСК", "ПРЕСА", "ПРОДУКТИ" як на твоєму фоні!
+        drawKiosk(ctx, bx + 95, groundTop - 95, 105, 95, 'КІОСК', '#94a3b8', '#ef4444');
+        drawKiosk(ctx, bx + 220, groundTop - 95, 105, 95, 'ПРЕСА', '#60a5fa', '#1d4ed8');
+        drawKiosk(ctx, bx + 510, groundTop - 110, 185, 110, 'ПРОДУКТИ', '#fde68a', '#dc2626');
+    }
+}
+
+function drawKiosk(ctx, x, y, w, h, title, bodyColor, textColor) {
+    ctx.fillStyle = bodyColor;
+    ctx.strokeStyle = '#1e293b';
+    ctx.lineWidth = 2;
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeRect(x, y, w, h);
+
+    ctx.fillStyle = '#475569';
+    ctx.fillRect(x + 14, y + 24, w - 28, h - 38);
+
+    ctx.fillStyle = '#fef3c7';
+    ctx.fillRect(x + 12, y - 16, w - 24, 20);
+    ctx.strokeRect(x + 12, y - 16, w - 24, 20);
+
+    ctx.fillStyle = textColor;
+    ctx.font = '900 11px Rubik, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(title, x + w / 2, y - 2);
+}
+
+function drawFallbackGround(ctx, scrollX) {
+    const groundY = GAME_HEIGHT - BASE_GROUND_HEIGHT;
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillRect(0, groundY, GAME_WIDTH, 14);
+
+    ctx.fillStyle = '#334155';
+    ctx.fillRect(0, groundY + 14, GAME_WIDTH, 22);
+
+    ctx.fillStyle = '#475569';
+    ctx.fillRect(0, groundY + 36, GAME_WIDTH, BASE_GROUND_HEIGHT - 36);
+
+    const step = 48;
+    const offset = ((scrollX % step) + step) % step;
+    ctx.strokeStyle = '#1e293b';
+    ctx.lineWidth = 2;
+    for (let x = -offset; x < GAME_WIDTH; x += step) {
+        ctx.strokeRect(x, groundY, step, 14);
+    }
+}
+
+function drawFallbackShawarma(ctx, x, y, w, h) {
+    ctx.save();
+    ctx.translate(x + w / 2, y + h / 2);
+
+    // Лаваш зверху з підсмаженими цятками та фольга знизу (як у твоєму item.png!)
+    ctx.fillStyle = '#fde68a';
+    ctx.strokeStyle = '#1e1b4b';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.roundRect(-w * 0.3, -h * 0.35, w * 0.6, h * 0.45, [10, 10, 0, 0]);
+    ctx.fill();
+    ctx.stroke();
+
+    // Зелень і м'ясо зверху
+    ctx.fillStyle = '#4ade80';
+    ctx.beginPath();
+    ctx.arc(-w * 0.14, -h * 0.34, w * 0.14, 0, Math.PI * 2);
+    ctx.arc(w * 0.14, -h * 0.34, w * 0.14, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#9a3412';
+    ctx.beginPath();
+    ctx.arc(0, -h * 0.32, w * 0.15, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Срібляста фольга знизу
+    ctx.fillStyle = '#cbd5e1';
+    ctx.beginPath();
+    ctx.roundRect(-w * 0.32, h * 0.02, w * 0.64, h * 0.38, [4, 4, 12, 12]);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.restore();
+}
+
+function drawFallbackATBBag(ctx, x, y, w, h) {
+    ctx.save();
+    ctx.translate(x + w / 2, y + h / 2);
+
+    ctx.fillStyle = '#bae6fd';
+    ctx.strokeStyle = '#0c4a6e';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.roundRect(-w * 0.36, -h * 0.22, w * 0.72, h * 0.58, 14);
+    ctx.fill();
+    ctx.stroke();
+
+    // Сердиті очі
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(-w * 0.16, -h * 0.02, 7, 0, Math.PI * 2);
+    ctx.arc(-w * 0.02, -h * 0.02, 7, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Лого АТБ
+    ctx.fillStyle = '#0284c7';
+    ctx.beginPath();
+    ctx.arc(w * 0.16, h * 0.05, w * 0.18, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '900 10px Rubik, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('АТБ', w * 0.16, h * 0.08);
+
+    ctx.restore();
+}
+
+function drawFallbackBroccoli(ctx, x, y, w, h) {
+    ctx.save();
+    ctx.translate(x + w / 2, y + h / 2);
+
+    ctx.fillStyle = '#bef264';
+    ctx.strokeStyle = '#14532d';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.roundRect(-w * 0.18, -h * 0.02, w * 0.36, h * 0.4, 8);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#22c55e';
+    [[-w * 0.2, -h * 0.12, w * 0.22], [w * 0.2, -h * 0.12, w * 0.22], [0, -h * 0.24, w * 0.26]].forEach(([px, py, pr]) => {
+        ctx.beginPath();
+        ctx.arc(px, py, pr, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+    });
+
+    ctx.restore();
+}
+
+// --- 7. СПАВН ШАВУХ, ВОРОГІВ ТА ГІГАНТСЬКОЇ ФІНАЛЬНОЇ ШАВУХИ ---
+
+function spawnShawarma() {
+    const groundY = hero.groundY;
+    const count = Math.random() < 0.35 ? 3 : 1;
+    const baseHeightOffset = Math.random() < 0.5 ? 85 : 185;
+
+    for (let i = 0; i < count; i++) {
+        items.push({
+            x: GAME_WIDTH + 60 + i * 75,
+            baseY: groundY - baseHeightOffset - (count === 3 && i === 1 ? 35 : 0),
+            y: 0,
+            w: 58,
+            h: 64,
+            phase: Math.random() * Math.PI * 2
+        });
+    }
+}
+
+function spawnEnemy() {
+    const groundY = hero.groundY;
+    const isBag = Math.random() < 0.48;
+
+    if (isBag) {
+        // Пакет АТБ (може бігти по землі або підлітати на вітрі)
+        const flyAltitude = Math.random() < 0.55 ? 84 : 155;
+        enemies.push({
+            type: 'bag',
+            x: GAME_WIDTH + 80,
+            baseY: groundY - flyAltitude,
+            y: groundY - flyAltitude,
+            w: 72,
+            h: 72,
+            speedMult: 1.12,
+            phase: Math.random() * Math.PI * 2
+        });
+    } else {
+        // Сердите броколі біжить по дорозі
+        enemies.push({
+            type: 'broccoli',
+            x: GAME_WIDTH + 80,
+            baseY: groundY - 76,
+            y: groundY - 76,
+            w: 72,
+            h: 76,
+            speedMult: 1.0,
+            phase: 0
+        });
+    }
+}
+
+function spawnGiantFinaleShawarma() {
+    const groundY = hero.groundY;
+    giantShawarma = {
+        x: GAME_WIDTH + 160,
+        targetX: Math.min(GAME_WIDTH * 0.62, GAME_WIDTH - 240),
+        y: groundY - 265,
+        w: 195,
+        h: 255,
+        phase: 0,
+        collected: false
+    };
+
+    floatingTexts.push({
+        text: '✨ ФІНАЛ! ГІГАНТСЬКА ШАВУХА ПОПЕРЕДУ! ✨',
+        x: GAME_WIDTH / 2,
+        y: 150,
+        alpha: 2.2,
+        color: '#fde047'
+    });
+}
+
+function spawnConfettiBurst(cx, cy, count = 70) {
+    const colors = ['#f43f5e', '#fbbf24', '#34d399', '#38bdf8', '#a855f7', '#ffffff'];
+    for (let i = 0; i < count; i++) {
+        confetti.push({
+            x: cx,
+            y: cy,
+            vx: (Math.random() - 0.5) * 650,
+            vy: (Math.random() - 0.8) * 650,
+            w: Math.random() * 8 + 5,
+            h: Math.random() * 6 + 4,
+            rot: Math.random() * Math.PI * 2,
+            vRot: (Math.random() - 0.5) * 12,
+            color: colors[i % colors.length],
+            life: 2.5 + Math.random() * 1.5
+        });
+    }
+}
+
+function checkIntersection(a, b) {
+    return (
+        a.x < b.x + b.w &&
+        a.x + a.w > b.x &&
+        a.y < b.y + b.h &&
+        a.y + a.h > b.y
+    );
+}
+
+// --- 8. ОНОВЛЕННЯ КАДРУ ---
+
+function updateGame(dt) {
+    if (gameState === 'PLAYING') {
+        levelTimer += dt;
+        const progress = Math.min(1, levelTimer / config.levelDuration);
+        updateProgressUI(progress, Math.max(0, Math.ceil(config.levelDuration - levelTimer)));
+
+        // Коли таймер доходить до останніх 5 секунд (або 100%) — запускаємо Фінал з Гігантською Шавухою!
+        if (levelTimer >= config.levelDuration - 4.5 && !giantShawarma) {
+            gameState = 'FINALE';
+            enemies = []; // Прибираємо ворогів, щоб ніщо не зіпсувало фінал!
+            spawnGiantFinaleShawarma();
+        }
+    }
+
+    // Спокійний, комфортний рух фону (без миготіння!)
+    bgScrollX += gameSpeed * config.bgSpeedFactor * dt;
+    groundScrollX += gameSpeed * dt;
+
+    if (invulnerableTimer > 0) invulnerableTimer -= dt;
+    if (shakeTime > 0) shakeTime -= dt;
+
+    hero.update(dt);
+    const heroBox = hero.getHitbox();
+
+    // Якщо ми у звичайному режимі — спавнимо шавухи та ворогів
+    if (gameState === 'PLAYING') {
+        itemSpawnTimer -= dt;
+        if (itemSpawnTimer <= 0) {
+            spawnShawarma();
+            itemSpawnTimer = 1.0 + Math.random() * 1.0;
+        }
+
+        enemySpawnTimer -= dt;
+        if (enemySpawnTimer <= 0) {
+            spawnEnemy();
+            enemySpawnTimer = 1.35 + Math.random() * 0.95;
+        }
+    }
+
+    // Оновлення фінальної Гігантської Шавухи
+    if (giantShawarma && !giantShawarma.collected) {
+        giantShawarma.phase += dt * 3.5;
+        giantShawarma.x -= gameSpeed * 0.85 * dt;
+        updateProgressUI(1, 0);
+
+        const megaBox = {
+            x: giantShawarma.x + 25,
+            y: giantShawarma.y,
+            w: giantShawarma.w - 50,
+            h: giantShawarma.h
+        };
+
+        if (checkIntersection(heroBox, megaBox) || giantShawarma.x <= hero.x + hero.width * 0.6) {
+            giantShawarma.collected = true;
+            score += 10;
+            updateHUD();
+            sfx.playBirthdayFanfare();
+            spawnConfettiBurst(hero.x + 120, hero.y - 40, 110);
+            triggerVictory();
+            return;
+        }
+    }
+
+    // Оновлення звичайних шавух
+    for (let i = items.length - 1; i >= 0; i--) {
+        const it = items[i];
+        it.x -= gameSpeed * dt;
+        it.phase += dt * 5;
+        it.y = it.baseY + Math.sin(it.phase) * 7;
+
+        const itemBox = {
+            x: it.x + it.w * 0.15,
+            y: it.y + it.h * 0.15,
+            w: it.w * 0.7,
+            h: it.h * 0.7
+        };
+
+        if (checkIntersection(heroBox, itemBox)) {
+            score++;
+            sfx.playCollect();
+            updateHUD();
+
+            for (let p = 0; p < 10; p++) {
+                particles.push({
+                    x: it.x + it.w / 2,
+                    y: it.y + it.h / 2,
+                    vx: (Math.random() - 0.5) * 240,
+                    vy: (Math.random() - 0.5) * 240 - 40,
+                    radius: Math.random() * 5 + 3,
+                    color: p % 2 === 0 ? '#fbbf24' : '#f97316',
+                    alpha: 1,
+                    life: 0.5
+                });
+            }
+
+            floatingTexts.push({
+                text: '+1 ШАВУХА 🌯',
+                x: it.x + it.w / 2,
+                y: it.y,
+                alpha: 1,
+                color: '#fde047'
+            });
+
+            items.splice(i, 1);
+            continue;
+        }
+
+        if (it.x + it.w < -60) items.splice(i, 1);
+    }
+
+    // Оновлення ворогів
+    const groundY = hero.groundY;
+    for (let i = enemies.length - 1; i >= 0; i--) {
+        const en = enemies[i];
+        en.x -= gameSpeed * en.speedMult * dt;
+
+        if (en.type === 'bag') {
+            en.phase += dt * 4.5;
+            en.y = en.baseY + Math.sin(en.phase) * 16;
+        } else {
+            en.phase += dt * 10;
+            en.y = (groundY - en.h) - Math.abs(Math.sin(en.phase)) * 5;
+        }
+
+        const enemyBox = {
+            x: en.x + en.w * 0.22,
+            y: en.y + en.h * 0.2,
+            w: en.w * 0.56,
+            h: en.h * 0.65
+        };
+
+        if (invulnerableTimer <= 0 && checkIntersection(heroBox, enemyBox)) {
+            lives--;
+            invulnerableTimer = 1.5;
+            shakeTime = 0.25;
+            sfx.playHit();
+            updateHUD();
+
+            floatingTexts.push({
+                text: en.type === 'bag' ? 'ПАКЕТ АТБ! 💥' : 'ФУ, БРОКОЛІ! 🥦',
+                x: hero.x + hero.width / 2,
+                y: hero.y,
+                alpha: 1.2,
+                color: '#f87171'
+            });
+
+            for (let p = 0; p < 14; p++) {
+                particles.push({
+                    x: en.x + en.w / 2,
+                    y: en.y + en.h / 2,
+                    vx: (Math.random() - 0.5) * 300,
+                    vy: (Math.random() - 0.5) * 300,
+                    radius: Math.random() * 6 + 3,
+                    color: en.type === 'bag' ? '#38bdf8' : '#4ade80',
+                    alpha: 1,
+                    life: 0.55
+                });
+            }
+
+            enemies.splice(i, 1);
+
+            if (lives <= 0) {
+                triggerGameOver();
+                return;
+            }
+            continue;
+        }
+
+        if (en.x + en.w < -80) enemies.splice(i, 1);
+    }
+
+    updateEffects(dt);
+}
+
+function updateEffects(dt) {
+    for (let i = particles.length - 1; i >= 0; i--) {
+        const pt = particles[i];
+        pt.x += pt.vx * dt;
+        pt.y += pt.vy * dt;
+        pt.life -= dt;
+        pt.alpha = Math.max(0, pt.life * 2);
+        if (pt.life <= 0) particles.splice(i, 1);
+    }
+
+    for (let i = confetti.length - 1; i >= 0; i--) {
+        const cf = confetti[i];
+        cf.vy += 420 * dt;
+        cf.x += cf.vx * dt;
+        cf.y += cf.vy * dt;
+        cf.rot += cf.vRot * dt;
+        cf.life -= dt;
+        if (cf.life <= 0) confetti.splice(i, 1);
+    }
+
+    for (let i = floatingTexts.length - 1; i >= 0; i--) {
+        const ft = floatingTexts[i];
+        ft.y -= 50 * dt;
+        ft.alpha -= 1.0 * dt;
+        if (ft.alpha <= 0) floatingTexts.splice(i, 1);
+    }
+}
+
+// --- 9. МАЛЮВАННЯ СЦЕНИ ---
+
+// Піксельне дерево + ліхтар, які природно закривають стик у кільцевому режимі фону
+function drawSeamHiderTree(ctx, seamX) {
+    const groundTop = GAME_HEIGHT - BASE_GROUND_HEIGHT;
+    ctx.save();
+
+    // Стовбур дерева на стику
+    ctx.fillStyle = '#451a03';
+    ctx.strokeStyle = '#1c1917';
+    ctx.lineWidth = 3;
+    ctx.fillRect(seamX - 14, groundTop - 160, 28, 165);
+    ctx.strokeRect(seamX - 14, groundTop - 160, 28, 165);
+
+    // Пишна зелена крона дерева в піксельному стилі двору, яка перекриває перехід будинків
+    const foliage = [
+        [0, -210, 72, '#365314'],
+        [-45, -175, 58, '#3f6212'],
+        [45, -175, 58, '#3f6212'],
+        [0, -255, 64, '#4d7c0f'],
+        [-32, -225, 52, '#4d7c0f'],
+        [32, -225, 52, '#4d7c0f'],
+        [0, -200, 56, '#65a30d']
+    ];
+    foliage.forEach(([dx, dy, r, col]) => {
+        ctx.fillStyle = col;
+        ctx.beginPath();
+        ctx.arc(seamX + dx, groundTop + dy, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+    });
+
+    // Кущі знизу біля тротуару
+    [[-50, -28, 34], [0, -34, 40], [50, -28, 34]].forEach(([dx, dy, r]) => {
+        ctx.fillStyle = '#3f6212';
+        ctx.beginPath();
+        ctx.arc(seamX + dx, groundTop + dy, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+    });
+
+    ctx.restore();
+}
+
+function drawBackgroundLayer(ctx) {
+    const rawBg = assets.background.loaded ? assets.background.img : null;
+    const seamlessBg = assets.background.processedCanvas || rawBg;
+
+    if (!rawBg) {
+        drawFallbackBackground(ctx, bgScrollX);
+        return;
+    }
+
+    const bw = rawBg.naturalWidth || rawBg.width;
+    const bh = rawBg.naturalHeight || rawBg.height;
+
+    if (config.bgMode === 'panorama') {
+        // РЕЖИМ ПАНОРАМИ НА 60 СЕКУНД (ЗА ЗАМОВЧУВАННЯМ):
+        // Фон взагалі НЕ повторюється і НЕ має жодної склейки!
+        // За 60 секунд забігу камера плавно панорамує вздовж одного широкого кадру двору зліва направо.
+        const minScaleForHeight = GAME_HEIGHT / bh;
+        // Робимо ширину панорами достатньою, щоб навіть на широкому моніторі був плавний запас ходу на 60 секунд
+        const minTotalWidth = Math.max(GAME_WIDTH * 1.42, GAME_WIDTH + 360);
+        const scale = Math.max(minScaleForHeight, minTotalWidth / bw);
+
+        const drawW = Math.round(bw * scale);
+        const drawH = Math.round(bh * scale);
+        // Вирівнюємо по нижньому краю, щоб дорога, кіоски та машини завжди стояли на своєму місці
+        const drawY = Math.round((GAME_HEIGHT - drawH) * 0.82);
+
+        const maxPanX = Math.max(0, drawW - GAME_WIDTH);
+        const progress = Math.min(1, Math.max(0, levelTimer / config.levelDuration));
+        const panX = -Math.round(maxPanX * progress);
+
+        ctx.imageSmoothingEnabled = true;
+        ctx.drawImage(rawBg, panX, drawY, drawW, drawH);
+    } else {
+        // КІЛЬЦЕВИЙ РЕЖИМ + ДЕРЕВО НА СТИКУ
+        const scale = GAME_HEIGHT / bh;
+        const tileW = Math.round(bw * scale);
+        const offset = ((bgScrollX % tileW) + tileW) % tileW;
+
+        ctx.imageSmoothingEnabled = true;
+        for (let x = -offset; x < GAME_WIDTH; x += tileW) {
+            ctx.drawImage(seamlessBg, Math.floor(x), 0, tileW + 2, GAME_HEIGHT);
+        }
+        // Малюємо дерево точно поверх стику тайлів, щоб сховати різницю висоти будинків
+        for (let x = -offset; x < GAME_WIDTH + tileW; x += tileW) {
+            if (x > -120 && x < GAME_WIDTH + 120) {
+                drawSeamHiderTree(ctx, Math.floor(x));
+            }
+        }
+    }
+}
+
+function drawGame() {
+    ctx.save();
+
+    if (shakeTime > 0) {
+        ctx.translate((Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10);
+    }
+
+    // 1. ФОН (Панорама без жодної склейки або Кільце з деревом)
+    drawBackgroundLayer(ctx);
+
+    // 2. ДОРОГА / БОРДЮР (platform.png — автоматично обрізана від прозорих полів!)
+    const platSource = assets.platform.processedCanvas || (assets.platform.loaded ? assets.platform.img : null);
+    if (platSource) {
+        const pw = platSource.naturalWidth || platSource.width;
+        const ph = platSource.naturalHeight || platSource.height;
+        const targetH = BASE_GROUND_HEIGHT;
+        const scale = targetH / (ph || targetH);
+        const tileW = Math.max(48, Math.round((pw || 256) * scale));
+        const offset = ((groundScrollX % tileW) + tileW) % tileW;
+        const drawY = GAME_HEIGHT - targetH;
+
+        ctx.imageSmoothingEnabled = false;
+        for (let x = -offset; x < GAME_WIDTH; x += tileW) {
+            ctx.drawImage(platSource, Math.floor(x), drawY, tileW + 2, targetH);
+        }
+    } else {
+        drawFallbackGround(ctx, groundScrollX);
+    }
+
+    // 3. ЗВИЧАЙНІ ШАВУХИ (item.png)
+    const itemSource = assets.item.processedCanvas || (assets.item.loaded ? assets.item.img : null);
+    items.forEach(it => {
+        if (itemSource) {
+            drawSpriteAlignedBottom(ctx, itemSource, it.x, it.y, it.w, it.h);
+        } else {
+            drawFallbackShawarma(ctx, it.x, it.y, it.w, it.h);
+        }
+    });
+
+    // 4. ГІГАНТСЬКА ФІНАЛЬНА ШАВУХА 🌯👑
+    if (giantShawarma) {
+        const gs = giantShawarma;
+        const bobY = Math.sin(gs.phase) * 10;
+        const cx = gs.x + gs.w / 2;
+        const cy = gs.y + gs.h / 2 + bobY;
+
+        // Золоте святкове сяйво позаду Гігантської Шавухи
+        ctx.save();
+        const glow = ctx.createRadialGradient(cx, cy, 20, cx, cy, 190);
+        glow.addColorStop(0, 'rgba(251, 191, 36, 0.85)');
+        glow.addColorStop(0.5, 'rgba(244, 63, 94, 0.35)');
+        glow.addColorStop(1, 'rgba(251, 191, 36, 0)');
+        ctx.fillStyle = glow;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 190, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Червоний подіум знизу
+        ctx.fillStyle = '#be123c';
+        ctx.strokeStyle = '#fbbf24';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.roundRect(gs.x - 15, hero.groundY - 18, gs.w + 30, 22, 8);
+        ctx.fill();
+        ctx.stroke();
+
+        // Сама Гігантська Шавуха
+        if (itemSource) {
+            drawSpriteAlignedBottom(ctx, itemSource, gs.x, gs.y + bobY, gs.w, gs.h);
+        } else {
+            drawFallbackShawarma(ctx, gs.x, gs.y + bobY, gs.w, gs.h);
+        }
+
+        // Святкова корона / підпис зверху
+        ctx.font = '900 36px Rubik, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('👑', cx, gs.y + bobY - 16);
+
+        ctx.font = '900 16px Rubik, sans-serif';
+        ctx.fillStyle = '#fef08a';
+        ctx.strokeStyle = '#0f172a';
+        ctx.lineWidth = 4;
+        ctx.strokeText('МЕГА-ШАВУХА ДЛЯ КЕЙТ!', cx, gs.y + bobY - 52);
+        ctx.fillText('МЕГА-ШАВУХА ДЛЯ КЕЙТ!', cx, gs.y + bobY - 52);
+        ctx.restore();
+    }
+
+    // 5. ВОРОГИ (enemy_bag.png та enemy_broccoli.png)
+    const bagSource = assets.enemy_bag.processedCanvas || (assets.enemy_bag.loaded ? assets.enemy_bag.img : null);
+    const brocSource = assets.enemy_broccoli.processedCanvas || (assets.enemy_broccoli.loaded ? assets.enemy_broccoli.img : null);
+
+    enemies.forEach(en => {
+        if (en.type === 'bag') {
+            if (bagSource) {
+                drawSpriteAlignedBottom(ctx, bagSource, en.x, en.y, en.w, en.h);
+            } else {
+                drawFallbackATBBag(ctx, en.x, en.y, en.w, en.h);
+            }
+        } else {
+            if (brocSource) {
+                drawSpriteAlignedBottom(ctx, brocSource, en.x, en.y, en.w, en.h);
+            } else {
+                drawFallbackBroccoli(ctx, en.x, en.y, en.w, en.h);
+            }
+        }
+
+        if (config.showHitboxes) {
+            ctx.strokeStyle = '#ef4444';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(en.x + en.w * 0.22, en.y + en.h * 0.2, en.w * 0.56, en.h * 0.65);
+        }
+    });
+
+    // 6. ГЕРОЇНЯ КЕЙТ
+    hero.draw(ctx);
+
+    // 7. ЧАСТИНКИ, КОНФЕТІ ТА СПЛИВАЮЧИЙ ТЕКСТ
+    particles.forEach(pt => {
+        ctx.save();
+        ctx.globalAlpha = pt.alpha;
+        ctx.fillStyle = pt.color;
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, pt.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    });
+
+    confetti.forEach(cf => {
+        ctx.save();
+        ctx.translate(cf.x, cf.y);
+        ctx.rotate(cf.rot);
+        ctx.fillStyle = cf.color;
+        ctx.fillRect(-cf.w / 2, -cf.h / 2, cf.w, cf.h);
+        ctx.restore();
+    });
+
+    floatingTexts.forEach(ft => {
+        ctx.save();
+        ctx.globalAlpha = Math.min(1, Math.max(0, ft.alpha));
+        ctx.font = '900 19px Rubik, sans-serif';
+        ctx.fillStyle = ft.color;
+        ctx.strokeStyle = '#0f172a';
+        ctx.lineWidth = 4;
+        ctx.textAlign = 'center';
+        ctx.strokeText(ft.text, ft.x, ft.y);
+        ctx.fillText(ft.text, ft.x, ft.y);
+        ctx.restore();
+    });
+
+    ctx.restore();
+}
+
+// --- 10. ІГРОВИЙ ЦИКЛ ТА СТАНИ (ПЕРЕМОГА / ПРОДОВЖЕННЯ) ---
+
+let lastTimestamp = performance.now();
+
+function gameLoop(timestamp) {
+    const dt = Math.min(0.05, (timestamp - lastTimestamp) / 1000);
+    lastTimestamp = timestamp;
+
+    if (gameState === 'PLAYING' || gameState === 'FINALE') {
+        updateGame(dt);
+    } else {
+        bgScrollX += 14 * dt;
+        hero.update(dt);
+        updateEffects(dt);
+    }
+
+    drawGame();
+    requestAnimationFrame(gameLoop);
+}
+
+function startGame(resetProgress = true) {
+    sfx.init();
+    if (resetProgress) {
+        score = 0;
+        levelTimer = 0;
+        giantShawarma = null;
+    }
+    lives = 3;
+    invulnerableTimer = 1.0;
+    items = [];
+    enemies = [];
+    particles = [];
+    floatingTexts = [];
+    itemSpawnTimer = 0.6;
+    enemySpawnTimer = 1.6;
+
+    hero.reset();
+    updateHUD();
+    updateProgressUI(levelTimer / config.levelDuration, Math.max(0, Math.ceil(config.levelDuration - levelTimer)));
+
+    gameState = giantShawarma ? 'FINALE' : 'PLAYING';
+    document.getElementById('overlay-screen').classList.add('hidden');
+}
+
+function triggerVictory() {
+    gameState = 'VICTORY';
+
+    document.getElementById('overlay-badge').textContent = '👑 ФІНІШ! МЕГА-ШАВУХА ТВОЯ! 👑';
+    document.getElementById('overlay-title').textContent = 'З ДНЕМ НАРОДЖЕННЯ, КЕЙТ! 🎉🌯';
+    document.getElementById('overlay-subtitle').innerHTML =
+        'Ти пройшла весь двір, перестрибнула всі пакети АТБ і броколі та здобула <span class="text-amber-400 font-bold">Гігантську Святкову Шавуху</span>! Нехай кожен день буде таким же смачним і драйвовим! 💖✨';
+
+    const statsBox = document.getElementById('gameover-stats');
+    statsBox.classList.remove('hidden');
+    statsBox.classList.add('grid');
+    document.getElementById('final-score').textContent = score;
+    document.getElementById('final-progress').textContent = '100% 🏆';
+
+    document.getElementById('btn-continue').classList.add('hidden');
+    document.getElementById('btn-start').innerHTML = '🎉 Зіграти святковий забіг ще раз!';
+    document.getElementById('exit-overlay-label').textContent = '🎁 Завершити та повернутися в Telegram-бот';
+    document.getElementById('overlay-screen').classList.remove('hidden');
+}
+
+function triggerGameOver() {
+    gameState = 'GAMEOVER';
+    const pct = Math.min(99, Math.round((levelTimer / config.levelDuration) * 100));
+
+    document.getElementById('overlay-badge').textContent = `Пройдено ${pct}% дистанції`;
+    document.getElementById('overlay-title').textContent = 'ОЙ, ПАКЕТ ТА БРОКОЛІ! 💥';
+    document.getElementById('overlay-subtitle').textContent =
+        'До Гігантської Шавухи залишилося зовсім трошки! Можеш продовжити бігти з цього ж місця або почати спочатку:';
+
+    const statsBox = document.getElementById('gameover-stats');
+    statsBox.classList.remove('hidden');
+    statsBox.classList.add('grid');
+    document.getElementById('final-score').textContent = score;
+    document.getElementById('final-progress').textContent = pct + '%';
+
+    document.getElementById('btn-continue').classList.remove('hidden');
+    document.getElementById('btn-start').innerHTML = '🔄 Почати спочатку';
+    document.getElementById('exit-overlay-label').textContent = '✖ Вийти з гри (повернутися в бот)';
+    document.getElementById('overlay-screen').classList.remove('hidden');
+}
+
+function updateHUD() {
+    document.getElementById('score-display').textContent = score;
+    const livesContainer = document.getElementById('lives-display');
+    livesContainer.innerHTML = '';
+    for (let i = 0; i < 3; i++) {
+        const span = document.createElement('span');
+        span.textContent = i < lives ? '❤️' : '🖤';
+        livesContainer.appendChild(span);
+    }
+}
+
+function updateProgressUI(progressRatio, secondsLeft) {
+    const pct = Math.min(100, Math.max(0, Math.round(progressRatio * 100)));
+    document.getElementById('progress-bar').style.width = pct + '%';
+    document.getElementById('progress-bar-mobile').style.width = pct + '%';
+
+    const label = secondsLeft > 0 ? `До Мега-Шавухи: ${secondsLeft}с` : `🌯 ФІНАЛ!`;
+    document.getElementById('timer-display').textContent = label;
+    document.getElementById('timer-display-mobile').textContent = secondsLeft > 0 ? `${secondsLeft}с 🌯` : `🌯!`;
+}
+
+// --- 11. АДАПТИВНІСТЬ ТА КЕРУВАННЯ ---
+
+function resizeCanvas() {
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const aspect = vw / vh;
+
+    GAME_WIDTH = Math.max(380, Math.min(1250, Math.round(GAME_HEIGHT * aspect)));
+    canvas.width = GAME_WIDTH;
+    canvas.height = GAME_HEIGHT;
+    canvas.style.width = vw + 'px';
+    canvas.style.height = vh + 'px';
+
+    if (gameState === 'START') {
+        hero.reset();
+    }
+}
+
+window.addEventListener('resize', resizeCanvas);
+
+window.addEventListener('keydown', (e) => {
+    if (['Space', 'ArrowUp', 'KeyW'].includes(e.code)) {
+        e.preventDefault();
+        if (gameState === 'PLAYING' || gameState === 'FINALE') {
+            hero.jump();
+        } else if (document.getElementById('assets-modal').classList.contains('hidden')) {
+            if (gameState === 'GAMEOVER') startGame(false);
+            else startGame(true);
+        }
+    }
+});
+
+canvas.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    sfx.init();
+    if (gameState === 'PLAYING' || gameState === 'FINALE') {
+        hero.jump();
+    }
+}, { passive: false });
+
+canvas.addEventListener('mousedown', (e) => {
+    if (e.button === 0 && (gameState === 'PLAYING' || gameState === 'FINALE')) {
+        sfx.init();
+        hero.jump();
+    }
+});
+
+document.getElementById('btn-start').addEventListener('click', () => startGame(true));
+document.getElementById('btn-continue').addEventListener('click', () => startGame(false));
+
+// Обробники кнопок "Вийти" (для Telegram WebApp та звичайного браузера)
+document.getElementById('btn-exit-top').addEventListener('click', exitGameToTelegram);
+document.getElementById('btn-exit-overlay').addEventListener('click', exitGameToTelegram);
+document.getElementById('btn-resume-from-exit').addEventListener('click', () => {
+    document.getElementById('exit-modal').classList.add('hidden');
+});
+
+document.getElementById('btn-sound').addEventListener('click', () => {
+    sfx.init();
+    sfx.enabled = !sfx.enabled;
+    document.getElementById('sound-icon').textContent = sfx.enabled ? '🔊' : '🔇';
+});
+
+document.getElementById('btn-hitbox').addEventListener('click', () => {
+    config.showHitboxes = !config.showHitboxes;
+    const btn = document.getElementById('btn-hitbox');
+    btn.classList.toggle('border-emerald-500', config.showHitboxes);
+    btn.classList.toggle('text-emerald-400', config.showHitboxes);
+});
+
+// --- 12. МЕНЕДЖЕР КАРТИНОК + ЕКСПОРТ ГОТОВОГО INDEX.HTML ---
+
+function updateAssetUI() {
+    const listEl = document.getElementById('asset-list');
+    listEl.innerHTML = '';
+
+    loadedCustomCount = 0;
+    ASSET_MANIFEST.forEach(item => {
+        const state = assets[item.key];
+        if (state && state.loaded) loadedCustomCount++;
+
+        const card = document.createElement('div');
+        card.className = 'flex items-center justify-between gap-2 bg-slate-800/90 border border-slate-700/80 p-2.5 rounded-xl';
+
+        const statusBadge = state && state.loaded
+            ? `<span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]" title="Завантажено і оброблено!"></span>`
+            : `<span class="inline-block w-2.5 h-2.5 rounded-full bg-amber-400" title="Очікує твій файл"></span>`;
+
+        card.innerHTML = `
+            <div class="flex items-center gap-2.5 min-w-0">
+                ${statusBadge}
+                <div class="truncate">
+                    <div class="text-xs font-bold text-white truncate">${item.files.join(' / ')}</div>
+                    <div class="text-[11px] text-slate-400 truncate">${item.label}</div>
+                </div>
+            </div>
+            <label class="shrink-0 bg-slate-700 hover:bg-slate-600 text-amber-300 text-xs font-bold px-2.5 py-1.5 rounded-lg cursor-pointer transition">
+                <span>Обрати</span>
+                <input type="file" accept="image/*" data-asset-key="${item.key}" class="single-asset-input hidden">
+            </label>
+        `;
+        listEl.appendChild(card);
+    });
+
+    document.getElementById('asset-badge').textContent = `${loadedCustomCount}/8`;
+    if (loadedCustomCount === 8) {
+        document.getElementById('btn-assets').classList.remove('animate-pulse');
+    }
+
+    document.querySelectorAll('.single-asset-input').forEach(input => {
+        input.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            const key = e.target.getAttribute('data-asset-key');
+            if (file && key) loadUserFileIntoAsset(key, file);
+        });
+    });
+}
+
+function loadUserFileIntoAsset(key, file) {
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+        loadFromSource(key, ev.target.result, true);
+    };
+    reader.readAsDataURL(file);
+}
+
+// Розумне розпізнавання всіх 8 файлів одразу (включно з jump.png!)
+document.getElementById('bulk-file-input').addEventListener('change', (e) => {
+    const files = Array.from(e.target.files);
+    files.forEach(file => {
+        const lower = file.name.toLowerCase();
+        let matchedKey = null;
+
+        if (lower.includes('jump')) matchedKey = 'hero_jump';
+        else if (lower.includes('idle')) matchedKey = 'hero_idle';
+        else if (lower.includes('run')) matchedKey = 'run_sheet';
+        else if (lower.includes('plat') || lower.includes('road')) matchedKey = 'platform';
+        else if (lower.includes('back') || lower.includes('bg')) matchedKey = 'background';
+        else if (lower.includes('bag') || lower.includes('atb')) matchedKey = 'enemy_bag';
+        else if (lower.includes('broc')) matchedKey = 'enemy_broccoli';
+        else if (lower.includes('item') || lower.includes('shav') || lower.includes('shaw')) matchedKey = 'item';
+
+        if (matchedKey) {
+            loadUserFileIntoAsset(matchedKey, file);
+        }
+    });
+});
+
+// Експорт єдиного index.html з вшитими всередину картинками!
+document.getElementById('btn-export-html').addEventListener('click', () => {
+    const embeddedObj = {};
+    ASSET_MANIFEST.forEach(item => {
+        const st = assets[item.key];
+        if (st && st.dataUrl) {
+            embeddedObj[item.key] = st.dataUrl;
+        } else if (st && st.processedCanvas) {
+            try {
+                embeddedObj[item.key] = st.processedCanvas.toDataURL('image/png');
+            } catch (e) {}
+        }
+    });
+
+    const fullHtml = document.documentElement.outerHTML;
+    const replacedHtml = fullHtml.replace(
+        /window\.EMBEDDED_ASSETS\s*=\s*\{[\s\S]*?\};/,
+        `window.EMBEDDED_ASSETS = ${JSON.stringify(embeddedObj)};`
+    );
+
+    const blob = new Blob(['<!DOCTYPE html>\n' + replacedHtml], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'kate_birthday_run.html';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+});
+
+document.getElementById('btn-assets').addEventListener('click', () => {
+    document.getElementById('assets-modal').classList.remove('hidden');
+});
+document.getElementById('btn-open-assets-start').addEventListener('click', () => {
+    document.getElementById('assets-modal').classList.remove('hidden');
+});
+document.getElementById('btn-close-assets').addEventListener('click', () => {
+    document.getElementById('assets-modal').classList.add('hidden');
+});
+document.getElementById('btn-done-assets').addEventListener('click', () => {
+    document.getElementById('assets-modal').classList.add('hidden');
+});
+
+document.getElementById('chk-autocrop').addEventListener('change', (e) => {
+    config.autoCrop = e.target.checked;
+    ASSET_MANIFEST.forEach(item => {
+        if (assets[item.key] && assets[item.key].loaded) {
+            processLoadedAsset(item.key, assets[item.key].img);
+        }
+    });
+});
+
+document.getElementById('rng-hero-scale').addEventListener('input', (e) => {
+    const val = Number(e.target.value);
+    config.heroScale = val / 100;
+    document.getElementById('lbl-hero-scale').textContent = val + '%';
+    hero.reset();
+});
+
+document.getElementById('rng-run-scale').addEventListener('input', (e) => {
+    const val = Number(e.target.value);
+    config.runScaleMultiplier = val / 100;
+    document.getElementById('lbl-run-scale').textContent = val + '%';
+});
+
+document.getElementById('sel-bg-mode').addEventListener('change', (e) => {
+    config.bgMode = e.target.value;
+    document.getElementById('lbl-bg-mode').textContent =
+        e.target.value === 'panorama' ? 'Панорама (0 швів)' : 'Кільце + Дерево';
+});
+
+document.getElementById('rng-level-time').addEventListener('input', (e) => {
+    const val = Number(e.target.value);
+    config.levelDuration = val;
+    document.getElementById('lbl-level-time').textContent = val + ' сек';
+});
+
+window.onload = function () {
+    initAssets();
+    resizeCanvas();
+    updateHUD();
+    updateAssetUI();
+    requestAnimationFrame(gameLoop);
+};
+</script>
+</body>
+</html>
