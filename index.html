@@ -857,7 +857,7 @@ const hero = {
         // Фіксуємо ідентичну базову ширину для бігу та стрибка, щоб розміри не відрізнялися
         this.width = Math.round(this.height * 0.72);
         this.groundY = GAME_HEIGHT - BASE_GROUND_HEIGHT + 16;
-        this.x = Math.max(55, Math.min(145, Math.round(GAME_WIDTH * 0.13)));
+        this.x = 35; // Фіксуємо Кейт лівіше, щоб відкрити огляд уперед;
         this.y = this.groundY - this.height;
         this.vy = 0;
         this.isGrounded = true;
